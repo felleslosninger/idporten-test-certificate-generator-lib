@@ -20,10 +20,9 @@ import java.util.Date;
 public class VirksomhetGenerator {
     static { Security.addProvider(new BouncyCastleProvider());  }
 
-    char[] password = "changeit".toCharArray();
-    private KeyStore.ProtectionParameter protection = new KeyStore.PasswordProtection(password);
 
-    public void generateRot() throws Exception {
+
+    public KeyStore.PrivateKeyEntry generateRot() throws Exception {
         SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
         KeyPairGenerator kpGen = KeyPairGenerator.getInstance("RSA");
         kpGen.initialize(4096, random);
@@ -31,8 +30,7 @@ public class VirksomhetGenerator {
         PublicKey RSAPubKey = keyPair.getPublic();
         PrivateKey RSAPrivateKey = keyPair.getPrivate();
 
-        X500Name issuerName = null;
-        issuerName = new X500Name("CN=Direktoratet for forvaltning og ikt DIFI, OU=Norge, O=DIFI - 991825827, L=None, C=None");
+        X500Name issuerName = new X500Name("CN=Direktoratet for forvaltning og ikt DIFI, OU=Norge, O=DIFI - 991825827, L=None, C=None");
 
         SubjectPublicKeyInfo subjPubKeyInfo = new SubjectPublicKeyInfo(ASN1Sequence.getInstance(RSAPubKey.getEncoded()));
 
@@ -56,20 +54,23 @@ public class VirksomhetGenerator {
 
         X509Certificate bc = new JcaX509CertificateConverter().setProvider("BC").getCertificate(v3CertGen.build(sigGen));
 
-
-        KeyStore pkcs12 = KeyStore.getInstance("pkcs12");
-        pkcs12.load(null, password);
-
-        KeyStore.Entry entry = new KeyStore.PrivateKeyEntry(RSAPrivateKey, new Certificate[]{bc});
-        pkcs12.setEntry("root", entry, protection);
+        return new KeyStore.PrivateKeyEntry(RSAPrivateKey, new Certificate[]{bc});
 
 
-        FileOutputStream file = new FileOutputStream("test.p12");
-        pkcs12.store(file, password);
     }
 
-    public void generateIntermediate() {
-        
+    public KeyStore.PrivateKeyEntry generateIntermediate() throws Exception {
+        SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
+        KeyPairGenerator kpGen = KeyPairGenerator.getInstance("RSA");
+        kpGen.initialize(4096, random);
+        KeyPair keyPair = kpGen.generateKeyPair();
+        PublicKey RSAPubKey = keyPair.getPublic();
+        PrivateKey RSAPrivateKey = keyPair.getPrivate();
+
+
+
+
+        return new KeyStore.PrivateKeyEntry(RSAPubKey, new Certificate[]{root});
     }
 
     public void generateVirksomhet(String orgnr) {
