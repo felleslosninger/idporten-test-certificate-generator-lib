@@ -2,7 +2,6 @@ package no.difi;
 
 import java.io.FileOutputStream;
 import java.security.KeyStore;
-import java.security.cert.Certificate;
 
 /**
  * Hello world!
@@ -21,8 +20,10 @@ public class App
         VirksomhetGenerator generator = new VirksomhetGenerator();
         KeyStore.PrivateKeyEntry root = generator.generateRot();
         pkcs12.setEntry("root", root, protection);
-        pkcs12.setEntry("intermediate", generator.generateIntermediate(), protection);
-        generator.generateVirksomhet("987654321");
+        KeyStore.PrivateKeyEntry intermediate = generator.generateIntermediate(root);
+        pkcs12.setEntry("intermediate", intermediate, protection);
+        KeyStore.PrivateKeyEntry virksomhet = generator.generateVirksomhet("987654321", intermediate);
+        pkcs12.setEntry("virksomhet", virksomhet, protection);
 
         FileOutputStream file = new FileOutputStream("test.p12");
         pkcs12.store(file, password);
