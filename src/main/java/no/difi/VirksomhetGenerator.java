@@ -39,6 +39,7 @@ public class VirksomhetGenerator {
     static { Security.addProvider(new BouncyCastleProvider());  }
     Date from = new DateTime().minusMonths(1).toDate();
     Date to = new DateTime().plusYears(2).toDate();
+    String certificatePolicies = "2.16.578.1.1.1.1.100";
 
 
 
@@ -60,7 +61,8 @@ public class VirksomhetGenerator {
                 subjPubKeyInfo
         );
 
-        v3CertGen.addExtension(Extension.basicConstraints, false, new BasicConstraints(false));
+        v3CertGen.addExtension(Extension.basicConstraints, true, new BasicConstraints(false));
+        v3CertGen.addExtension(Extension.keyUsage, true, new KeyUsage(KeyUsage.keyCertSign | KeyUsage.cRLSign));
 
 
         //Content Signer
@@ -92,7 +94,8 @@ public class VirksomhetGenerator {
 
         certGen.addExtension(Extension.authorityKeyIdentifier, false, (new JcaX509ExtensionUtils()).createAuthorityKeyIdentifier(caCert));
         certGen.addExtension(Extension.subjectKeyIdentifier, false, (new JcaX509ExtensionUtils()).createSubjectKeyIdentifier(RSAPubKey));
-        certGen.addExtension(Extension.basicConstraints, false, new BasicConstraints(true));
+        certGen.addExtension(Extension.basicConstraints, true, new BasicConstraints(true));
+        certGen.addExtension(Extension.keyUsage, true, new KeyUsage(KeyUsage.keyCertSign | KeyUsage.cRLSign));
 
         ContentSigner sigGen = new JcaContentSignerBuilder("SHA1withRSAEncryption").setProvider("BC").build(caKey);
         X509CertificateHolder cert = certGen.build(sigGen);
@@ -140,7 +143,8 @@ public class VirksomhetGenerator {
         certGen.addExtension(Extension.authorityKeyIdentifier, false, (new JcaX509ExtensionUtils()).createAuthorityKeyIdentifier(intermediateCertificate));
         certGen.addExtension(Extension.subjectKeyIdentifier, false, (new JcaX509ExtensionUtils()).createSubjectKeyIdentifier(RSAPubKey));
         certGen.addExtension(Extension.basicConstraints, false, new BasicConstraints(false));
-        certGen.addExtension(Extension.certificatePolicies, false, new CertificatePolicies(new PolicyInformation(new ASN1ObjectIdentifier("2.16.578.1.1.1.1.100"))));
+
+        certGen.addExtension(Extension.certificatePolicies, false, new CertificatePolicies(new PolicyInformation(new ASN1ObjectIdentifier(certificatePolicies))));
         certGen.addExtension(Extension.keyUsage, true, new KeyUsage(KeyUsage.dataEncipherment | KeyUsage.digitalSignature | KeyUsage.keyEncipherment));
 
         ContentSigner sigGen = new JcaContentSignerBuilder("SHA1withRSAEncryption").setProvider("BC").build(intermediatePrivateKey);
