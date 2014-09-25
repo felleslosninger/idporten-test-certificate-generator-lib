@@ -4,12 +4,11 @@
   <groupId>no.difi</groupId>
   <artifactId>certificate-generator</artifactId>
   <packaging>jar</packaging>
-  <version>0.1-SNAPSHOT</version>
+  <version>1.0-SNAPSHOT</version>
   <name>certificate-generator</name>
 
 
   <dependencies>
-
     <dependency>
       <groupId>org.bouncycastle</groupId>
       <artifactId>bcpkix-jdk15on</artifactId>

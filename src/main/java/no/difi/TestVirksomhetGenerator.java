@@ -7,68 +7,65 @@ import org.bouncycastle.asn1.x509.*;
 import org.bouncycastle.asn1.x509.Extension;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
-import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509ExtensionUtils;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
-import org.bouncycastle.x509.X509V2AttributeCertificate;
-import org.bouncycastle.x509.X509V3CertificateGenerator;
-import org.bouncycastle.x509.extension.AuthorityKeyIdentifierStructure;
 import org.joda.time.DateTime;
 
 import java.io.ByteArrayInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
 import java.security.*;
 import java.security.cert.*;
 import java.security.cert.Certificate;
-import java.security.cert.X509Extension;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.LinkedList;
-import java.util.List;
 
 import javax.security.auth.x500.X500Principal;
-import javax.security.auth.x500.X500PrivateCredential;
 
-public class VirksomhetGenerator {
+public class TestVirksomhetGenerator {
     static { Security.addProvider(new BouncyCastleProvider());  }
+
+    private final String rsaEncryption = "SHA256withRSAEncryption";
     Date from = new DateTime().minusMonths(1).toDate();
     Date to = new DateTime().plusYears(2).toDate();
     String certificatePolicies = "2.16.578.1.1.1.1.100";
 
+    String rootSubject = "CN=Direktoratet for forvaltning og ikt DIFI TEST ROOT, OU=Norge, O=DIFI test - 991825827";
+    String mellomligendeSubject = "CN=DIFI test virksomhetssertifiat intermediate, SERIALNUMBER=991825827, O=Difi test";
+    String anyPolicy = "2.5.29.32.0";
 
 
     public KeyStore.PrivateKeyEntry generateRot() throws Exception {
+
         KeyPair keyPair = getKeyPair();
         PublicKey RSAPubKey = keyPair.getPublic();
         PrivateKey RSAPrivateKey = keyPair.getPrivate();
 
-        String subject = "CN=Direktoratet for forvaltning og ikt DIFI TEST, OU=Norge, O=DIFI test - 991825827";
-        X500Name issuerName = new X500Name(subject);
+        X500Name issuerName = new X500Name(rootSubject);
         SubjectPublicKeyInfo subjPubKeyInfo = new SubjectPublicKeyInfo(ASN1Sequence.getInstance(RSAPubKey.getEncoded()));
 
         X509v3CertificateBuilder v3CertGen = new X509v3CertificateBuilder(
                 issuerName,
-                BigInteger.valueOf(Math.abs(new SecureRandom().nextInt())),
+                getRandomBigint(),
                 from,
                 to,
-                new X500Name(subject),
+                new X500Name(rootSubject),
                 subjPubKeyInfo
         );
 
-        v3CertGen.addExtension(Extension.basicConstraints, true, new BasicConstraints(false));
+        v3CertGen.addExtension(Extension.basicConstraints, true, new BasicConstraints(true));
         v3CertGen.addExtension(Extension.keyUsage, true, new KeyUsage(KeyUsage.keyCertSign | KeyUsage.cRLSign));
+        v3CertGen.addExtension(Extension.subjectKeyIdentifier, false, new JcaX509ExtensionUtils().createTruncatedSubjectKeyIdentifier(RSAPubKey));
 
 
         //Content Signer
         ContentSigner sigGen = new JcaContentSignerBuilder("SHA1WithRSAEncryption").setProvider("BC").build(RSAPrivateKey);
-
         X509CertificateHolder build = v3CertGen.build(sigGen);
+
         InputStream byteInStream = new ByteArrayInputStream(build.getEncoded());
         Certificate certificate = CertificateFactory.getInstance("X.509").generateCertificate(byteInStream);
 
@@ -87,8 +84,9 @@ public class VirksomhetGenerator {
 
 
         X500Principal issuer = caCert.getSubjectX500Principal();
-        BigInteger serialNo = BigInteger.valueOf(Math.abs(new SecureRandom().nextInt()));
-        X500Principal subject = new X500Principal("CN=DIFI test virksomhetssertifiat intermediate, SERIALNUMBER=991825827");
+        BigInteger serialNo = getRandomBigint();
+
+        X500Principal subject = new X500Principal(mellomligendeSubject);
 
         X509v3CertificateBuilder certGen =  new JcaX509v3CertificateBuilder(issuer, serialNo, from, to, subject, RSAPubKey);
 
@@ -97,7 +95,9 @@ public class VirksomhetGenerator {
         certGen.addExtension(Extension.basicConstraints, true, new BasicConstraints(true));
         certGen.addExtension(Extension.keyUsage, true, new KeyUsage(KeyUsage.keyCertSign | KeyUsage.cRLSign));
 
-        ContentSigner sigGen = new JcaContentSignerBuilder("SHA1withRSAEncryption").setProvider("BC").build(caKey);
+        certGen.addExtension(Extension.certificatePolicies, false, new CertificatePolicies(new PolicyInformation(new ASN1ObjectIdentifier(anyPolicy))));
+
+        ContentSigner sigGen = new JcaContentSignerBuilder(rsaEncryption).setProvider("BC").build(caKey);
         X509CertificateHolder cert = certGen.build(sigGen);
 
         LinkedList<Certificate> list = new LinkedList<Certificate>();
@@ -135,8 +135,8 @@ public class VirksomhetGenerator {
 
 
         X500Principal issuer = intermediateCertificate.getSubjectX500Principal();
-        BigInteger serialNo = BigInteger.valueOf(Math.abs(new SecureRandom().nextInt()));
-        X500Principal subject = new X500Principal("CN=DIFI test virksomhetssertifiat, SERIALNUMBER=" + orgnr);
+        BigInteger serialNo = getRandomBigint();
+        X500Principal subject = new X500Principal(createVirksomhetSubject(orgnr));
 
         X509v3CertificateBuilder certGen =  new JcaX509v3CertificateBuilder(issuer, serialNo, from, to, subject, RSAPubKey);
 
@@ -147,7 +147,7 @@ public class VirksomhetGenerator {
         certGen.addExtension(Extension.certificatePolicies, false, new CertificatePolicies(new PolicyInformation(new ASN1ObjectIdentifier(certificatePolicies))));
         certGen.addExtension(Extension.keyUsage, true, new KeyUsage(KeyUsage.dataEncipherment | KeyUsage.digitalSignature | KeyUsage.keyEncipherment));
 
-        ContentSigner sigGen = new JcaContentSignerBuilder("SHA1withRSAEncryption").setProvider("BC").build(intermediatePrivateKey);
+        ContentSigner sigGen = new JcaContentSignerBuilder(rsaEncryption).setProvider("BC").build(intermediatePrivateKey);
         X509CertificateHolder cert = certGen.build(sigGen);
 
         LinkedList<Certificate> list = new LinkedList<Certificate>();
@@ -155,5 +155,13 @@ public class VirksomhetGenerator {
         return toKeystoreEntry(list, RSAPrivateKey, cert);
 
 
+    }
+
+    private BigInteger getRandomBigint() {
+        return BigInteger.valueOf(Math.abs(new SecureRandom().nextInt()));
+    }
+
+    private String createVirksomhetSubject(String orgnr) {
+        return "CN=DIFI test virksomhetssertifiat, SERIALNUMBER=" + orgnr;
     }
 }
