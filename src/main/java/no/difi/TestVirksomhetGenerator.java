@@ -21,6 +21,7 @@ import java.math.BigInteger;
 import java.security.*;
 import java.security.cert.*;
 import java.security.cert.Certificate;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.LinkedList;
 
@@ -41,7 +42,10 @@ public class TestVirksomhetGenerator {
 
     public KeyStore.PrivateKeyEntry generateRot() throws Exception {
 
-        KeyPair keyPair = getKeyPair();
+        SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
+        KeyPairGenerator kpGen = KeyPairGenerator.getInstance("RSA");
+        kpGen.initialize(4096, random);
+        KeyPair keyPair = kpGen.generateKeyPair();
         PublicKey RSAPubKey = keyPair.getPublic();
         PrivateKey RSAPrivateKey = keyPair.getPrivate();
 
@@ -78,7 +82,7 @@ public class TestVirksomhetGenerator {
         PrivateKey caKey = privateKeyRoot.getPrivateKey();
         X509Certificate caCert = (X509Certificate) privateKeyRoot.getCertificate();
 
-        KeyPair keyPair = getKeyPair();
+        KeyPair keyPair = getNewKeyPair();
         PublicKey RSAPubKey = keyPair.getPublic();
         PrivateKey RSAPrivateKey = keyPair.getPrivate();
 
@@ -110,25 +114,56 @@ public class TestVirksomhetGenerator {
         InputStream byteInStream = new ByteArrayInputStream(cert.getEncoded());
         Certificate certificate = CertificateFactory.getInstance("X.509").generateCertificate(byteInStream);
 
-        signers.add(0, certificate);
+        signers.clear();
+        signers.add(certificate);
 
         return new KeyStore.PrivateKeyEntry(RSAPrivateKey, signers.toArray(new Certificate[signers.size()]));
     }
 
-    private KeyPair getKeyPair() throws NoSuchAlgorithmException {
+    public KeyPair getNewKeyPair() throws NoSuchAlgorithmException {
         SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
         KeyPairGenerator kpGen = KeyPairGenerator.getInstance("RSA");
-        kpGen.initialize(4096, random);
+        kpGen.initialize(2048, random);
         return kpGen.generateKeyPair();
     }
 
-    public KeyStore.PrivateKeyEntry generateVirksomhet(String orgnr, KeyStore.PrivateKeyEntry intermediate) throws Exception {
+    public KeyStore.PrivateKeyEntry generateVirksomhet(String orgnr, KeyStore.PrivateKeyEntry intermediate, X509Certificate rootCertificate) throws Exception {
+
+        PrivateKey intermediatePrivateKey = intermediate.getPrivateKey();
+        X509Certificate intermediateCertificate = (X509Certificate) intermediate.getCertificate();
+
+        KeyPair keyPair = getNewKeyPair();
+        PublicKey RSAPubKey = keyPair.getPublic();
+        PrivateKey RSAPrivateKey = keyPair.getPrivate();
+
+
+
+        X500Principal issuer = new X500Principal(intermediateCertificate.getSubjectDN().getName());
+        System.out.println(issuer);
+        BigInteger serialNo = getRandomBigint();
+        X500Principal subject = new X500Principal(createVirksomhetSubject(orgnr));
+
+        X509v3CertificateBuilder certGen =  new JcaX509v3CertificateBuilder(issuer, serialNo, from, to, subject, RSAPubKey);
+        standardVirksomhet(intermediateCertificate).build(certGen, keyPair);
+
+        ContentSigner sigGen = new JcaContentSignerBuilder(rsaEncryption).setProvider("BC").build(intermediatePrivateKey);
+        X509CertificateHolder cert = certGen.build(sigGen);
+
+        LinkedList<Certificate> list = new LinkedList<Certificate>();
+
+        list.add(intermediateCertificate);
+        return toKeystoreEntry(list, RSAPrivateKey, cert);
+
+
+    }
+
+    public KeyStore.PrivateKeyEntry generateGenerisk(String subjectText, KeyStore.PrivateKeyEntry intermediate, Certificate rootCertificate, CustomCertBuilder custom, Date fromDate, Date toDate) throws Exception {
 
         PrivateKey intermediatePrivateKey = intermediate.getPrivateKey();
         X509Certificate intermediateCertificate = (X509Certificate) intermediate.getCertificate();
 
 
-        KeyPair keyPair = getKeyPair();
+        KeyPair keyPair = getNewKeyPair();
         PublicKey RSAPubKey = keyPair.getPublic();
         PrivateKey RSAPrivateKey = keyPair.getPrivate();
 
@@ -136,25 +171,56 @@ public class TestVirksomhetGenerator {
 
         X500Principal issuer = intermediateCertificate.getSubjectX500Principal();
         BigInteger serialNo = getRandomBigint();
-        X500Principal subject = new X500Principal(createVirksomhetSubject(orgnr));
+        X500Principal subject = new X500Principal(subjectText);
 
-        X509v3CertificateBuilder certGen =  new JcaX509v3CertificateBuilder(issuer, serialNo, from, to, subject, RSAPubKey);
-
-        certGen.addExtension(Extension.authorityKeyIdentifier, false, (new JcaX509ExtensionUtils()).createAuthorityKeyIdentifier(intermediateCertificate));
-        certGen.addExtension(Extension.subjectKeyIdentifier, false, (new JcaX509ExtensionUtils()).createSubjectKeyIdentifier(RSAPubKey));
-        certGen.addExtension(Extension.basicConstraints, false, new BasicConstraints(false));
-
-        certGen.addExtension(Extension.certificatePolicies, false, new CertificatePolicies(new PolicyInformation(new ASN1ObjectIdentifier(certificatePolicies))));
-        certGen.addExtension(Extension.keyUsage, true, new KeyUsage(KeyUsage.dataEncipherment | KeyUsage.digitalSignature | KeyUsage.keyEncipherment));
-
+        X509v3CertificateBuilder certGen =  new JcaX509v3CertificateBuilder(issuer, serialNo, fromDate, toDate, subject, RSAPubKey);
+        custom.build(certGen, keyPair);
         ContentSigner sigGen = new JcaContentSignerBuilder(rsaEncryption).setProvider("BC").build(intermediatePrivateKey);
         X509CertificateHolder cert = certGen.build(sigGen);
 
         LinkedList<Certificate> list = new LinkedList<Certificate>();
+
         list.add(intermediateCertificate);
         return toKeystoreEntry(list, RSAPrivateKey, cert);
 
 
+    }
+
+    public KeyStore.PrivateKeyEntry generateSelfSignedGenerisk(String subjectText, CustomCertBuilder custom, Date fromDate, Date toDate) throws Exception {
+
+        KeyPair keyPair = getNewKeyPair();
+        PublicKey RSAPubKey = keyPair.getPublic();
+        PrivateKey RSAPrivateKey = keyPair.getPrivate();
+
+
+
+        X500Principal issuer = new X500Principal(subjectText);
+        BigInteger serialNo = getRandomBigint();
+        X500Principal subject = new X500Principal(subjectText);
+
+        X509v3CertificateBuilder certGen =  new JcaX509v3CertificateBuilder(issuer, serialNo, fromDate, toDate, subject, RSAPubKey);
+        custom.build(certGen, keyPair);
+        ContentSigner sigGen = new JcaContentSignerBuilder(rsaEncryption).setProvider("BC").build(RSAPrivateKey);
+        X509CertificateHolder cert = certGen.build(sigGen);
+
+        LinkedList<Certificate> list = new LinkedList<Certificate>();
+        return toKeystoreEntry(list, RSAPrivateKey, cert);
+
+
+    }
+
+    public CustomCertBuilder standardVirksomhet(final X509Certificate intermediateCertificate) throws Exception {
+        return new CustomCertBuilder() {
+            @Override
+            public void build(X509v3CertificateBuilder certGen, KeyPair keyPair) throws Exception{
+                certGen.addExtension(Extension.authorityKeyIdentifier, false, (new JcaX509ExtensionUtils()).createAuthorityKeyIdentifier(intermediateCertificate.getPublicKey(), intermediateCertificate.getSubjectX500Principal(), intermediateCertificate.getSerialNumber()));
+                certGen.addExtension(Extension.subjectKeyIdentifier, false, (new JcaX509ExtensionUtils()).createSubjectKeyIdentifier(keyPair.getPublic()));
+                certGen.addExtension(Extension.basicConstraints, false, new BasicConstraints(false));
+
+                certGen.addExtension(Extension.certificatePolicies, false, new CertificatePolicies(new PolicyInformation(new ASN1ObjectIdentifier(certificatePolicies))));
+                certGen.addExtension(Extension.keyUsage, true, new KeyUsage(KeyUsage.dataEncipherment | KeyUsage.digitalSignature | KeyUsage.keyEncipherment));
+            }
+        };
     }
 
     private BigInteger getRandomBigint() {
