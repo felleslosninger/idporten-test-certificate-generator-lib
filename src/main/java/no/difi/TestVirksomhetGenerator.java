@@ -3,7 +3,18 @@ package no.difi;
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.asn1.x509.*;
+import org.bouncycastle.asn1.x509.BasicConstraints;
+import org.bouncycastle.asn1.x509.CRLDistPoint;
+import org.bouncycastle.asn1.x509.CertificatePolicies;
+import org.bouncycastle.asn1.x509.DistributionPoint;
+import org.bouncycastle.asn1.x509.DistributionPointName;
+import org.bouncycastle.asn1.x509.Extension;
+import org.bouncycastle.asn1.x509.GeneralName;
+import org.bouncycastle.asn1.x509.GeneralNames;
+import org.bouncycastle.asn1.x509.KeyUsage;
+import org.bouncycastle.asn1.x509.PolicyInformation;
+import org.bouncycastle.asn1.x509.ReasonFlags;
+import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509ExtensionUtils;
@@ -18,14 +29,20 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigInteger;
-import java.security.*;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.KeyStore;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.security.PublicKey;
+import java.security.SecureRandom;
+import java.security.Security;
 import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Date;
 import java.util.LinkedList;
-import java.security.cert.Certificate;
 
 public class TestVirksomhetGenerator {
     static { Security.addProvider(new BouncyCastleProvider());  }
@@ -66,8 +83,6 @@ public class TestVirksomhetGenerator {
         v3CertGen.addExtension(Extension.basicConstraints, true, new BasicConstraints(true));
         v3CertGen.addExtension(Extension.keyUsage, true, new KeyUsage(KeyUsage.keyCertSign | KeyUsage.cRLSign));
         v3CertGen.addExtension(Extension.subjectKeyIdentifier, false, new JcaX509ExtensionUtils().createTruncatedSubjectKeyIdentifier(RSAPubKey));
-
-
 
 
         //Content Signer
@@ -111,7 +126,7 @@ public class TestVirksomhetGenerator {
         ContentSigner sigGen = new JcaContentSignerBuilder(rsaEncryption).setProvider("BC").build(caKey);
         X509CertificateHolder cert = certGen.build(sigGen);
 
-        LinkedList<Certificate> list = new LinkedList<Certificate>();
+        LinkedList<Certificate> list = new LinkedList<>();
         list.add(caCert);
         return toKeystoreEntry(list, RSAPrivateKey, cert);
 
@@ -137,10 +152,11 @@ public class TestVirksomhetGenerator {
         return kpGen.generateKeyPair();
     }
 
-    public KeyStore.PrivateKeyEntry generateVirksomhet(String orgnr, KeyStore.PrivateKeyEntry intermediate, X509Certificate rootCertificate) throws Exception {
-        return generateVirksomhet(orgnr, intermediate, rootCertificate, null);
+    public KeyStore.PrivateKeyEntry generateVirksomhet(String orgnr, KeyStore.PrivateKeyEntry intermediate) throws Exception {
+        return generateVirksomhet(orgnr, intermediate, null);
     }
-    public KeyStore.PrivateKeyEntry generateVirksomhet(String orgnr, KeyStore.PrivateKeyEntry intermediate, X509Certificate rootCertificate, BigInteger serialnumber) throws Exception {
+
+    public KeyStore.PrivateKeyEntry generateVirksomhet(String orgnr, KeyStore.PrivateKeyEntry intermediate, BigInteger serialnumber) throws Exception {
 
         PrivateKey intermediatePrivateKey = intermediate.getPrivateKey();
         X509Certificate intermediateCertificate = (X509Certificate) intermediate.getCertificate();
@@ -162,7 +178,7 @@ public class TestVirksomhetGenerator {
         ContentSigner sigGen = new JcaContentSignerBuilder(rsaEncryption).setProvider("BC").build(intermediatePrivateKey);
         X509CertificateHolder cert = certGen.build(sigGen);
 
-        LinkedList<Certificate> list = new LinkedList<Certificate>();
+        LinkedList<Certificate> list = new LinkedList<>();
 
         list.add(intermediateCertificate);
         return toKeystoreEntry(list, RSAPrivateKey, cert);
@@ -170,7 +186,7 @@ public class TestVirksomhetGenerator {
 
     }
 
-    public KeyStore.PrivateKeyEntry generateGenerisk(String subjectText, KeyStore.PrivateKeyEntry intermediate, Certificate rootCertificate, CustomCertBuilder custom, Date fromDate, Date toDate) throws Exception {
+    public KeyStore.PrivateKeyEntry generateGenerisk(String subjectText, KeyStore.PrivateKeyEntry intermediate, CustomCertBuilder custom, Date fromDate, Date toDate) throws Exception {
 
         PrivateKey intermediatePrivateKey = intermediate.getPrivateKey();
         X509Certificate intermediateCertificate = (X509Certificate) intermediate.getCertificate();
@@ -191,7 +207,7 @@ public class TestVirksomhetGenerator {
         ContentSigner sigGen = new JcaContentSignerBuilder(rsaEncryption).setProvider("BC").build(intermediatePrivateKey);
         X509CertificateHolder cert = certGen.build(sigGen);
 
-        LinkedList<Certificate> list = new LinkedList<Certificate>();
+        LinkedList<Certificate> list = new LinkedList<>();
 
         list.add(intermediateCertificate);
         return toKeystoreEntry(list, RSAPrivateKey, cert);
@@ -216,26 +232,23 @@ public class TestVirksomhetGenerator {
         ContentSigner sigGen = new JcaContentSignerBuilder(rsaEncryption).setProvider("BC").build(RSAPrivateKey);
         X509CertificateHolder cert = certGen.build(sigGen);
 
-        LinkedList<Certificate> list = new LinkedList<Certificate>();
+        LinkedList<Certificate> list = new LinkedList<>();
         return toKeystoreEntry(list, RSAPrivateKey, cert);
 
 
     }
 
     public CustomCertBuilder standardVirksomhet(final X509Certificate intermediateCertificate) throws Exception {
-        return new CustomCertBuilder() {
-            @Override
-            public void build(X509v3CertificateBuilder certGen, KeyPair keyPair) throws Exception{
-                certGen.addExtension(Extension.authorityKeyIdentifier, false, (new JcaX509ExtensionUtils()).createAuthorityKeyIdentifier(intermediateCertificate.getPublicKey(), intermediateCertificate.getSubjectX500Principal(), intermediateCertificate.getSerialNumber()));
-                certGen.addExtension(Extension.subjectKeyIdentifier, false, (new JcaX509ExtensionUtils()).createSubjectKeyIdentifier(keyPair.getPublic()));
-                certGen.addExtension(Extension.basicConstraints, false, new BasicConstraints(false));
+        return (certGen, keyPair) -> {
+            certGen.addExtension(Extension.authorityKeyIdentifier, false, (new JcaX509ExtensionUtils()).createAuthorityKeyIdentifier(intermediateCertificate.getPublicKey(), intermediateCertificate.getSubjectX500Principal(), intermediateCertificate.getSerialNumber()));
+            certGen.addExtension(Extension.subjectKeyIdentifier, false, (new JcaX509ExtensionUtils()).createSubjectKeyIdentifier(keyPair.getPublic()));
+            certGen.addExtension(Extension.basicConstraints, false, new BasicConstraints(false));
 
-                certGen.addExtension(Extension.certificatePolicies, false, new CertificatePolicies(new PolicyInformation(new ASN1ObjectIdentifier(certificatePolicies))));
-                certGen.addExtension(Extension.keyUsage, true, new KeyUsage(KeyUsage.dataEncipherment | KeyUsage.digitalSignature | KeyUsage.keyEncipherment));
+            certGen.addExtension(Extension.certificatePolicies, false, new CertificatePolicies(new PolicyInformation(new ASN1ObjectIdentifier(certificatePolicies))));
+            certGen.addExtension(Extension.keyUsage, true, new KeyUsage(KeyUsage.dataEncipherment | KeyUsage.digitalSignature | KeyUsage.keyEncipherment));
 
-                CRLDistPoint crl = createDistributionPointExtention(intermediateCertificate);
-                certGen.addExtension(Extension.cRLDistributionPoints, false, crl);
-            }
+            CRLDistPoint crl = createDistributionPointExtention(intermediateCertificate);
+            certGen.addExtension(Extension.cRLDistributionPoints, false, crl);
         };
     }
 
@@ -246,7 +259,7 @@ public class TestVirksomhetGenerator {
         DistributionPoint distributionPoint = new DistributionPoint(
                 distributionPointname,
                 new ReasonFlags(ReasonFlags.keyCompromise),
-                new GeneralNames(new GeneralName(new X509Name((intermediate).getSubjectX500Principal().getName()))));
+                new GeneralNames(new GeneralName(new X500Name((intermediate).getSubjectX500Principal().getName()))));
 
         DistributionPoint[] points = new DistributionPoint[]{distributionPoint};
         return new CRLDistPoint(points);
