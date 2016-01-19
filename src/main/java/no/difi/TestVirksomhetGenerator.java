@@ -42,7 +42,6 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Date;
-import java.util.LinkedList;
 
 public class TestVirksomhetGenerator {
     static { Security.addProvider(new BouncyCastleProvider());  }
@@ -95,9 +94,7 @@ public class TestVirksomhetGenerator {
         return new KeyStore.PrivateKeyEntry(RSAPrivateKey, new Certificate[]{certificate});
     }
 
-    public KeyStore.PrivateKeyEntry  generateIntermediate(KeyStore.PrivateKeyEntry privateKeyRoot) throws Exception
-    {
-
+    public KeyStore.PrivateKeyEntry  generateIntermediate(KeyStore.PrivateKeyEntry privateKeyRoot, String crlPath) throws Exception {
         PrivateKey caKey = privateKeyRoot.getPrivateKey();
         X509Certificate caCert = (X509Certificate) privateKeyRoot.getCertificate();
 
@@ -120,29 +117,23 @@ public class TestVirksomhetGenerator {
 
         certGen.addExtension(Extension.certificatePolicies, false, new CertificatePolicies(new PolicyInformation(new ASN1ObjectIdentifier(anyPolicy))));
 
-        CRLDistPoint crl = TestVirksomhetGenerator.createDistributionPointExtention((X509Certificate) privateKeyRoot.getCertificate());
+        CRLDistPoint crl = crlDistPoint(((X509Certificate) privateKeyRoot.getCertificate()).getSubjectX500Principal(), crlPath);
         certGen.addExtension(Extension.cRLDistributionPoints, false, crl);
 
         ContentSigner sigGen = new JcaContentSignerBuilder(rsaEncryption).setProvider("BC").build(caKey);
         X509CertificateHolder cert = certGen.build(sigGen);
 
-        LinkedList<Certificate> list = new LinkedList<>();
-        list.add(caCert);
-        return toKeystoreEntry(list, RSAPrivateKey, cert);
-
+        return toKeystoreEntry(RSAPrivateKey, cert);
     }
 
+    public KeyStore.PrivateKeyEntry  generateIntermediate(KeyStore.PrivateKeyEntry privateKeyRoot) throws Exception {
+        return generateIntermediate(privateKeyRoot, CRL_PATH);
+    }
 
-
-
-    private KeyStore.PrivateKeyEntry toKeystoreEntry(LinkedList<Certificate> signers, PrivateKey RSAPrivateKey, X509CertificateHolder cert) throws IOException, CertificateException {
+    private KeyStore.PrivateKeyEntry toKeystoreEntry(PrivateKey RSAPrivateKey, X509CertificateHolder cert) throws IOException, CertificateException {
         InputStream byteInStream = new ByteArrayInputStream(cert.getEncoded());
         Certificate certificate = CertificateFactory.getInstance("X.509").generateCertificate(byteInStream);
-
-        signers.clear();
-        signers.add(certificate);
-
-        return new KeyStore.PrivateKeyEntry(RSAPrivateKey, signers.toArray(new Certificate[signers.size()]));
+        return new KeyStore.PrivateKeyEntry(RSAPrivateKey, new Certificate[]{certificate});
     }
 
     public KeyPair getNewKeyPair() throws NoSuchAlgorithmException {
@@ -153,37 +144,22 @@ public class TestVirksomhetGenerator {
     }
 
     public KeyStore.PrivateKeyEntry generateVirksomhet(String orgnr, KeyStore.PrivateKeyEntry intermediate) throws Exception {
-        return generateVirksomhet(orgnr, intermediate, null);
+        return generateVirksomhet(orgnr, intermediate, null, CRL_PATH);
     }
 
-    public KeyStore.PrivateKeyEntry generateVirksomhet(String orgnr, KeyStore.PrivateKeyEntry intermediate, BigInteger serialnumber) throws Exception {
-
-        PrivateKey intermediatePrivateKey = intermediate.getPrivateKey();
+    public KeyStore.PrivateKeyEntry generateVirksomhet(String orgnr, KeyStore.PrivateKeyEntry intermediate, BigInteger serialnumber, String crlPath) throws Exception {
         X509Certificate intermediateCertificate = (X509Certificate) intermediate.getCertificate();
-
         KeyPair keyPair = getNewKeyPair();
-        PublicKey RSAPubKey = keyPair.getPublic();
-        PrivateKey RSAPrivateKey = keyPair.getPrivate();
-
-
-
         X500Principal issuer = new X500Principal(intermediateCertificate.getSubjectDN().getName());
-        System.out.println(issuer);
         BigInteger serialNo = serialnumber == null ? getRandomBigint() : serialnumber;
         X500Principal subject = new X500Principal(createVirksomhetSubject(orgnr));
 
-        X509v3CertificateBuilder certGen =  new JcaX509v3CertificateBuilder(issuer, serialNo, from, to, subject, RSAPubKey);
-        standardVirksomhet(intermediateCertificate).build(certGen, keyPair);
+        X509v3CertificateBuilder builder =  new JcaX509v3CertificateBuilder(issuer, serialNo, from, to, subject, keyPair.getPublic());
+        addVirksomhetExtensions(builder, intermediateCertificate, keyPair, crlPath);
 
-        ContentSigner sigGen = new JcaContentSignerBuilder(rsaEncryption).setProvider("BC").build(intermediatePrivateKey);
-        X509CertificateHolder cert = certGen.build(sigGen);
-
-        LinkedList<Certificate> list = new LinkedList<>();
-
-        list.add(intermediateCertificate);
-        return toKeystoreEntry(list, RSAPrivateKey, cert);
-
-
+        ContentSigner sigGen = new JcaContentSignerBuilder(rsaEncryption).setProvider("BC").build(intermediate.getPrivateKey());
+        X509CertificateHolder cert = builder.build(sigGen);
+        return toKeystoreEntry(keyPair.getPrivate(), cert);
     }
 
     public KeyStore.PrivateKeyEntry generateGenerisk(String subjectText, KeyStore.PrivateKeyEntry intermediate, CustomCertBuilder custom, Date fromDate, Date toDate) throws Exception {
@@ -196,8 +172,6 @@ public class TestVirksomhetGenerator {
         PublicKey RSAPubKey = keyPair.getPublic();
         PrivateKey RSAPrivateKey = keyPair.getPrivate();
 
-
-
         X500Principal issuer = intermediateCertificate.getSubjectX500Principal();
         BigInteger serialNo = getRandomBigint();
         X500Principal subject = new X500Principal(subjectText);
@@ -207,12 +181,7 @@ public class TestVirksomhetGenerator {
         ContentSigner sigGen = new JcaContentSignerBuilder(rsaEncryption).setProvider("BC").build(intermediatePrivateKey);
         X509CertificateHolder cert = certGen.build(sigGen);
 
-        LinkedList<Certificate> list = new LinkedList<>();
-
-        list.add(intermediateCertificate);
-        return toKeystoreEntry(list, RSAPrivateKey, cert);
-
-
+        return toKeystoreEntry(RSAPrivateKey, cert);
     }
 
     public KeyStore.PrivateKeyEntry generateSelfSignedGenerisk(String subjectText, CustomCertBuilder custom, Date fromDate, Date toDate) throws Exception {
@@ -232,37 +201,42 @@ public class TestVirksomhetGenerator {
         ContentSigner sigGen = new JcaContentSignerBuilder(rsaEncryption).setProvider("BC").build(RSAPrivateKey);
         X509CertificateHolder cert = certGen.build(sigGen);
 
-        LinkedList<Certificate> list = new LinkedList<>();
-        return toKeystoreEntry(list, RSAPrivateKey, cert);
+        return toKeystoreEntry(RSAPrivateKey, cert);
 
 
     }
 
-    public CustomCertBuilder standardVirksomhet(final X509Certificate intermediateCertificate) throws Exception {
-        return (certGen, keyPair) -> {
-            certGen.addExtension(Extension.authorityKeyIdentifier, false, (new JcaX509ExtensionUtils()).createAuthorityKeyIdentifier(intermediateCertificate.getPublicKey(), intermediateCertificate.getSubjectX500Principal(), intermediateCertificate.getSerialNumber()));
-            certGen.addExtension(Extension.subjectKeyIdentifier, false, (new JcaX509ExtensionUtils()).createSubjectKeyIdentifier(keyPair.getPublic()));
-            certGen.addExtension(Extension.basicConstraints, false, new BasicConstraints(false));
+    private void addVirksomhetExtensions(X509v3CertificateBuilder builder, X509Certificate intermediateCertificate, KeyPair keyPair, String crlPath) throws Exception {
+        builder.addExtension(Extension.authorityKeyIdentifier, false, (new JcaX509ExtensionUtils()).createAuthorityKeyIdentifier(intermediateCertificate.getPublicKey(), intermediateCertificate.getSubjectX500Principal(), intermediateCertificate.getSerialNumber()));
+        builder.addExtension(Extension.subjectKeyIdentifier, false, (new JcaX509ExtensionUtils()).createSubjectKeyIdentifier(keyPair.getPublic()));
+        builder.addExtension(Extension.basicConstraints, false, new BasicConstraints(false));
 
-            certGen.addExtension(Extension.certificatePolicies, false, new CertificatePolicies(new PolicyInformation(new ASN1ObjectIdentifier(certificatePolicies))));
-            certGen.addExtension(Extension.keyUsage, true, new KeyUsage(KeyUsage.dataEncipherment | KeyUsage.digitalSignature | KeyUsage.keyEncipherment));
+        builder.addExtension(Extension.certificatePolicies, false, new CertificatePolicies(new PolicyInformation(new ASN1ObjectIdentifier(certificatePolicies))));
+        builder.addExtension(Extension.keyUsage, true, new KeyUsage(KeyUsage.dataEncipherment | KeyUsage.digitalSignature | KeyUsage.keyEncipherment));
 
-            CRLDistPoint crl = createDistributionPointExtention(intermediateCertificate);
-            certGen.addExtension(Extension.cRLDistributionPoints, false, crl);
-        };
+        CRLDistPoint crl = crlDistPoint(intermediateCertificate.getSubjectX500Principal(),crlPath);
+        builder.addExtension(Extension.cRLDistributionPoints, false, crl);
     }
 
-    public static CRLDistPoint createDistributionPointExtention(X509Certificate intermediate) {
-        GeneralName gn = new GeneralName(GeneralName.uniformResourceIdentifier, CRL_PATH);
+    public CustomCertBuilder addVirksomhetExtensions(final X509Certificate intermediateCertificate) throws Exception {
+        return (certGen, keyPair) -> addVirksomhetExtensions(certGen, intermediateCertificate, keyPair, CRL_PATH);
+    }
+
+    private static CRLDistPoint crlDistPoint(X500Principal issuer, String crlPath) {
+        GeneralName gn = new GeneralName(GeneralName.uniformResourceIdentifier, crlPath);
         DistributionPointName distributionPointname = new DistributionPointName(DistributionPointName.FULL_NAME, gn);
 
         DistributionPoint distributionPoint = new DistributionPoint(
                 distributionPointname,
                 new ReasonFlags(ReasonFlags.keyCompromise),
-                new GeneralNames(new GeneralName(new X500Name((intermediate).getSubjectX500Principal().getName()))));
-
+                new GeneralNames(new GeneralName(new X500Name(issuer.getName())))
+        );
         DistributionPoint[] points = new DistributionPoint[]{distributionPoint};
         return new CRLDistPoint(points);
+    }
+
+    public static CRLDistPoint createDistributionPointExtention(X509Certificate intermediate) {
+        return crlDistPoint(intermediate.getSubjectX500Principal(), CRL_PATH);
     }
 
     private BigInteger getRandomBigint() {

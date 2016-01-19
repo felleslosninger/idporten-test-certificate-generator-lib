@@ -67,7 +67,7 @@ public class App {
         KeyStore.PrivateKeyEntry tmp3 = generator.generateVirksomhet("987464291", intermediate);
         pkcs12.setEntry("987464291_a", tmp3, protection);
 
-        KeyStore.PrivateKeyEntry revoked = generator.generateVirksomhet("987464291", intermediate, new BigInteger("7eeea5df", 16));
+        KeyStore.PrivateKeyEntry revoked = generator.generateVirksomhet("987464291", intermediate, new BigInteger("7eeea5df", 16), TestVirksomhetGenerator.CRL_PATH);
         pkcs12.setEntry("revoked", revoked, protection);
 
 
@@ -77,7 +77,7 @@ public class App {
         KeyStore.PrivateKeyEntry notvalidYet = generator.generateGenerisk(
                 "CN=DIFI test virksomhetssertifiat, SERIALNUMBER=987464291",
                 intermediate,
-                generator.standardVirksomhet((X509Certificate) intermediate.getCertificate()),
+                generator.addVirksomhetExtensions((X509Certificate) intermediate.getCertificate()),
                 DateTime.now().plusYears(1).toDate(),
                 DateTime.now().plusYears(2).toDate()
         );
@@ -86,7 +86,7 @@ public class App {
         KeyStore.PrivateKeyEntry expired = generator.generateGenerisk(
                 "CN=DIFI test virksomhetssertifiat, SERIALNUMBER=987464291",
                 intermediate,
-                generator.standardVirksomhet((X509Certificate) intermediate.getCertificate()),
+                generator.addVirksomhetExtensions((X509Certificate) intermediate.getCertificate()),
                 DateTime.now().minusYears(2).toDate(),
                 DateTime.now().minusYears(1).toDate()
         );
@@ -95,7 +95,7 @@ public class App {
         KeyStore.PrivateKeyEntry no_orgnr= generator.generateGenerisk(
                 "CN=DIFI test virksomhetssertifiat",
                 intermediate,
-                generator.standardVirksomhet((X509Certificate) intermediate.getCertificate()),
+                generator.addVirksomhetExtensions((X509Certificate) intermediate.getCertificate()),
                 DateTime.now().minusYears(1).toDate(),
                 DateTime.now().plusYears(2).toDate()
         );
