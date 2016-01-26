@@ -148,7 +148,7 @@ public class TestVirksomhetGenerator {
         return generateVirksomhet(orgnr, intermediate, null, CRL_PATH);
     }
 
-    public KeyStore.PrivateKeyEntry generateVirksomhet(String orgnr, KeyStore.PrivateKeyEntry intermediate, BigInteger serialnumber, String crlPath) throws Exception {
+    public KeyStore.PrivateKeyEntry generateVirksomhet(String orgnr, KeyStore.PrivateKeyEntry intermediate, BigInteger serialnumber, String...crlPath) throws Exception {
         KeyPair keyPair = getNewKeyPair();
         X509v3CertificateBuilder builder = builder(orgnr, keyPair.getPublic(), intermediate.getCertificate(), serialnumber);
         addVirksomhetExtensions(builder, (X509Certificate)intermediate.getCertificate(), keyPair.getPublic(), crlPath);
@@ -225,7 +225,7 @@ public class TestVirksomhetGenerator {
 
     }
 
-    private void addVirksomhetExtensions(X509v3CertificateBuilder builder, X509Certificate intermediateCertificate, PublicKey publicKey, String crlPath) throws Exception {
+    private void addVirksomhetExtensions(X509v3CertificateBuilder builder, X509Certificate intermediateCertificate, PublicKey publicKey, String...crlPaths) throws Exception {
         builder.addExtension(Extension.authorityKeyIdentifier, false, (new JcaX509ExtensionUtils()).createAuthorityKeyIdentifier(intermediateCertificate.getPublicKey(), intermediateCertificate.getSubjectX500Principal(), intermediateCertificate.getSerialNumber()));
         builder.addExtension(Extension.subjectKeyIdentifier, false, (new JcaX509ExtensionUtils()).createSubjectKeyIdentifier(publicKey));
         builder.addExtension(Extension.basicConstraints, false, new BasicConstraints(false));
@@ -233,7 +233,7 @@ public class TestVirksomhetGenerator {
         builder.addExtension(Extension.certificatePolicies, false, new CertificatePolicies(new PolicyInformation(new ASN1ObjectIdentifier(certificatePolicies))));
         builder.addExtension(Extension.keyUsage, true, new KeyUsage(KeyUsage.dataEncipherment | KeyUsage.digitalSignature | KeyUsage.keyEncipherment));
 
-        CRLDistPoint crl = crlDistPoint(intermediateCertificate.getSubjectX500Principal(),crlPath);
+        CRLDistPoint crl = crlDistPoint(intermediateCertificate.getSubjectX500Principal(),crlPaths);
         builder.addExtension(Extension.cRLDistributionPoints, false, crl);
     }
 
@@ -241,17 +241,19 @@ public class TestVirksomhetGenerator {
         return (certGen, keyPair) -> addVirksomhetExtensions(certGen, intermediateCertificate, keyPair.getPublic(), CRL_PATH);
     }
 
-    private static CRLDistPoint crlDistPoint(X500Principal issuer, String crlPath) {
-        GeneralName gn = new GeneralName(GeneralName.uniformResourceIdentifier, crlPath);
-        DistributionPointName distributionPointname = new DistributionPointName(DistributionPointName.FULL_NAME, gn);
-
-        DistributionPoint distributionPoint = new DistributionPoint(
-                distributionPointname,
-                new ReasonFlags(ReasonFlags.keyCompromise),
-                new GeneralNames(new GeneralName(new X500Name(issuer.getName())))
-        );
-        DistributionPoint[] points = new DistributionPoint[]{distributionPoint};
-        return new CRLDistPoint(points);
+    private static CRLDistPoint crlDistPoint(X500Principal issuer, String...crlPaths) {
+        DistributionPoint[] distributionPoints = new DistributionPoint[crlPaths.length];
+        for (int i = 0; i < crlPaths.length; i++) {
+            GeneralName gn = new GeneralName(GeneralName.uniformResourceIdentifier, crlPaths[i]);
+            DistributionPointName distributionPointname = new DistributionPointName(DistributionPointName.FULL_NAME, gn);
+            DistributionPoint distributionPoint = new DistributionPoint(
+                    distributionPointname,
+                    new ReasonFlags(ReasonFlags.keyCompromise),
+                    new GeneralNames(new GeneralName(new X500Name(issuer.getName())))
+            );
+            distributionPoints[i] = distributionPoint;
+        }
+        return new CRLDistPoint(distributionPoints);
     }
 
     public static CRLDistPoint createDistributionPointExtention(X509Certificate intermediate) {
