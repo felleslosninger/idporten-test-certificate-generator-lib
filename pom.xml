@@ -4,14 +4,14 @@
     <parent>
         <artifactId>kontaktinfo</artifactId>
         <groupId>no.difi.kontaktinfo</groupId>
-        <version>10-01-01</version>
+        <version>10-01-02</version>
         <relativePath>../</relativePath>
     </parent>
 
     <groupId>no.difi</groupId>
     <artifactId>certificate-generator</artifactId>
     <packaging>jar</packaging>
-    <version>10-01-01</version>
+    <version>10-01-02</version>
     <name>certificate-generator</name>
 
     <dependencies>
