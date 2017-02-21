@@ -28,7 +28,7 @@ import java.util.Date;
 import java.security.cert.Certificate;
 
 public class TestVirksomhetGenerator {
-    public static final String CRL_PATH = "http://static.difi.local/vagrant/eid/oppslagstjenesten/revocation.crl";
+    public static final String CRL_PATH = "http://static.dmz.local/vagrant/eid/oppslagstjenesten/revocation.crl";
 
     static { Security.addProvider(new BouncyCastleProvider());  }
 
