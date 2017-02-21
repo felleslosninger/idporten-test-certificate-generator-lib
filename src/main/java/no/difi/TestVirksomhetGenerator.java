@@ -28,10 +28,10 @@ import java.util.Date;
 import java.security.cert.Certificate;
 
 public class TestVirksomhetGenerator {
+    public static final String CRL_PATH = "http://static.difi.local/vagrant/eid/oppslagstjenesten/revocation.crl";
+
     static { Security.addProvider(new BouncyCastleProvider());  }
 
-
-    public static final String CRL_PATH = "http://deb.difi.local/vagrant/eid/oppslagstjenesten/revocation.crl";
     private final String rsaEncryption = "SHA256withRSAEncryption";
     Date from = new DateTime().minusMonths(1).toDate();
     Date to = new DateTime().plusYears(2).toDate();
@@ -41,6 +41,24 @@ public class TestVirksomhetGenerator {
     String mellomligendeSubject = "CN=DIFI test virksomhetssertifiat intermediate, SERIALNUMBER=991825827, O=Difi test";
     String anyPolicy = "2.5.29.32.0";
 
+    private static CRLDistPoint crlDistPoint(X500Principal issuer, String... crlPaths) {
+        DistributionPoint[] distributionPoints = new DistributionPoint[crlPaths.length];
+        for (int i = 0; i < crlPaths.length; i++) {
+            GeneralName gn = new GeneralName(GeneralName.uniformResourceIdentifier, crlPaths[i]);
+            DistributionPointName distributionPointname = new DistributionPointName(DistributionPointName.FULL_NAME, gn);
+            DistributionPoint distributionPoint = new DistributionPoint(
+                    distributionPointname,
+                    new ReasonFlags(ReasonFlags.keyCompromise),
+                    new GeneralNames(new GeneralName(new X500Name(issuer.getName())))
+            );
+            distributionPoints[i] = distributionPoint;
+        }
+        return new CRLDistPoint(distributionPoints);
+    }
+
+    public static CRLDistPoint createDistributionPointExtention(X509Certificate intermediate) {
+        return crlDistPoint(intermediate.getSubjectX500Principal(), CRL_PATH);
+    }
 
     public KeyStore.PrivateKeyEntry generateRot() throws Exception {
 
@@ -222,25 +240,6 @@ public class TestVirksomhetGenerator {
 
     public CustomCertBuilder addVirksomhetExtensions(final X509Certificate intermediateCertificate) throws Exception {
         return (certGen, keyPair) -> addVirksomhetExtensions(certGen, intermediateCertificate, keyPair.getPublic(), CRL_PATH);
-    }
-
-    private static CRLDistPoint crlDistPoint(X500Principal issuer, String...crlPaths) {
-        DistributionPoint[] distributionPoints = new DistributionPoint[crlPaths.length];
-        for (int i = 0; i < crlPaths.length; i++) {
-            GeneralName gn = new GeneralName(GeneralName.uniformResourceIdentifier, crlPaths[i]);
-            DistributionPointName distributionPointname = new DistributionPointName(DistributionPointName.FULL_NAME, gn);
-            DistributionPoint distributionPoint = new DistributionPoint(
-                    distributionPointname,
-                    new ReasonFlags(ReasonFlags.keyCompromise),
-                    new GeneralNames(new GeneralName(new X500Name(issuer.getName())))
-            );
-            distributionPoints[i] = distributionPoint;
-        }
-        return new CRLDistPoint(distributionPoints);
-    }
-
-    public static CRLDistPoint createDistributionPointExtention(X509Certificate intermediate) {
-        return crlDistPoint(intermediate.getSubjectX500Principal(), CRL_PATH);
     }
 
     public BigInteger getRandomBigint() {
