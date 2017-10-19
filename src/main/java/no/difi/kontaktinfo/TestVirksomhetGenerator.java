@@ -1,4 +1,4 @@
-package no.difi;
+package no.difi.kontaktinfo;
 
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.ASN1Sequence;
@@ -25,7 +25,6 @@ import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.util.Date;
-import java.security.cert.Certificate;
 
 public class TestVirksomhetGenerator {
     public static final String CRL_PATH = "http://static.dmz.local/vagrant/eid/oppslagstjenesten/revocation.crl";

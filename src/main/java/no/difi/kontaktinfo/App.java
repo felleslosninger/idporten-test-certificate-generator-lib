@@ -1,4 +1,4 @@
-package no.difi;
+package no.difi.kontaktinfo;
 
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.x500.X500Name;
@@ -22,10 +22,6 @@ import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
-/**
- * Hello world!
- *
- */
 public class App {
 
     public App(KeyStore.PrivateKeyEntry rootEntry, KeyStore.PrivateKeyEntry intermediateEntry) throws Exception {

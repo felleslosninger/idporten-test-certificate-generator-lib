@@ -1,4 +1,4 @@
-package no.difi;
+package no.difi.kontaktinfo;
 
 import junit.framework.Test;
 import junit.framework.TestCase;

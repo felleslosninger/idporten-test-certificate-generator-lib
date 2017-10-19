@@ -1,4 +1,4 @@
-package no.difi;
+package no.difi.kontaktinfo;
 
 
 import org.bouncycastle.cert.X509v3CertificateBuilder;

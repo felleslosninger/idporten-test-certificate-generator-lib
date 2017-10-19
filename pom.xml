@@ -50,7 +50,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>no.difi.App</mainClass>
+                            <mainClass>no.difi.kontaktinfo.App</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
