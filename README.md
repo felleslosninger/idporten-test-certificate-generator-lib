@@ -1,4 +1,4 @@
-#Virksomhetssertifkat generator for test
+# Virksomhetssertifkat generator for test
 
 Denne appen genererer virksomhetssertifkater i en egen jks. Disse sertifikatene inneholder en struktur som er delvis
 lik den som kreves gjennom virksomhetssertifkater i det offentlige. Det vil si at alle sertifikater blir generert med
@@ -7,13 +7,14 @@ opp i henhold til standarden.
 
 NB: Disse virksomhetssertifkatene kan bare brukes i intern testing. For et reelt test eller/og produksjons-virksomhetsertifkat måtte dette kjøpes av en CA som utsteder virksomhetssertifkater.
 
-##Forutsetninger
+## Forutsetninger
+
 - Java 1.8
 - Maven 3.3
 - Endre organisasjonsnummer til din virksomhetsorgnr i TestVirksomhetGenerator.java
 - TestVirksomhetGenerator.CRL_PATH må endres til annen url. Denne er bare tilgjengelig for internt hos Difi. 
 
-##Bruk
+## Bruk
 
 Man bygger prosjektet
 
@@ -30,7 +31,7 @@ dette.
 
 Dette krever at JKS-en inneholder root og intermediate som alias på riktige nøkler og at passordet er likt for begge.
 
-##Nøkler
+## Nøkler
 
 Nøklene med orgnummer er korrekte og vil validere i Oppslagstjenesten for kontakt og reservasjonsregisteret (Gitt at orgnumemr er godkjent). Andre alias
 beskriver en tenkt feilsituasjon der nøklene ikke vil validere i Oppslagstjensten og man vil få en fornuftig
