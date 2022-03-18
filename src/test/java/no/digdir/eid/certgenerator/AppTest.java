@@ -1,4 +1,4 @@
-package no.difi.kontaktinfo;
+package no.digdir.eid.certgenerator;
 
 import junit.framework.Test;
 import junit.framework.TestCase;

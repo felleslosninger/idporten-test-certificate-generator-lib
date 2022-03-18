@@ -2,11 +2,12 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>no.difi.kontaktinfo</groupId>
-    <artifactId>certificate-generator</artifactId>
+    <groupId>no.digdir.eid</groupId>
+    <artifactId>eid-certificate-generator</artifactId>
     <packaging>jar</packaging>
     <version>DEV-SNAPSHOT</version>
-    <name>certificate-generator</name>
+    <name>eid-certificate-generator</name>
+    <description>Generator for X509 business certificates (Virksomhetssertifikater)</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -50,7 +51,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>no.difi.kontaktinfo.App</mainClass>
+                            <mainClass>no.digdir.eid.certgenerator.App</mainClass>
                         </manifest>
                     </archive>
                     <descriptorRefs>
