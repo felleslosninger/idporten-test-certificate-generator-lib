@@ -11,7 +11,7 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <joda-time.version>2.1</joda-time.version>
+        <joda-time.version>2.10.13</joda-time.version>
         <junit.version>4.10</junit.version>
         <bouncycastle.version>1.51</bouncycastle.version>
     </properties>
