@@ -10,7 +10,6 @@ import org.bouncycastle.cert.jcajce.JcaX509v2CRLBuilder;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
-import org.joda.time.DateTime;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -18,6 +17,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.security.KeyStore;
 import java.security.cert.X509Certificate;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
@@ -64,8 +64,8 @@ public class App {
                 "CN=DIFI test virksomhetssertifiat, SERIALNUMBER=987464291",
                 intermediate,
                 generator.addVirksomhetExtensions((X509Certificate) intermediate.getCertificate()),
-                DateTime.now().plusYears(1).toDate(),
-                DateTime.now().plusYears(2).toDate()
+                Date.from(ZonedDateTime.now().plusYears(1).toInstant()),
+                Date.from(ZonedDateTime.now().plusYears(2).toInstant())
         );
         pkcs12.setEntry("not-valid-yet", notvalidYet, protection);
 
@@ -73,8 +73,8 @@ public class App {
                 "CN=DIFI test virksomhetssertifiat, SERIALNUMBER=987464291",
                 intermediate,
                 generator.addVirksomhetExtensions((X509Certificate) intermediate.getCertificate()),
-                DateTime.now().minusYears(2).toDate(),
-                DateTime.now().minusYears(1).toDate()
+                Date.from(ZonedDateTime.now().minusYears(2).toInstant()),
+                Date.from(ZonedDateTime.now().minusYears(1).toInstant())
         );
         pkcs12.setEntry("expired", expired, protection);
 
@@ -82,8 +82,8 @@ public class App {
                 "CN=DIFI test virksomhetssertifiat",
                 intermediate,
                 generator.addVirksomhetExtensions((X509Certificate) intermediate.getCertificate()),
-                DateTime.now().minusYears(1).toDate(),
-                DateTime.now().plusYears(2).toDate()
+                Date.from(ZonedDateTime.now().minusYears(1).toInstant()),
+                Date.from(ZonedDateTime.now().plusYears(2).toInstant())
         );
         pkcs12.setEntry("no_orgnr", no_orgnr, protection);
 
@@ -126,8 +126,7 @@ public class App {
 
     private void createCrlList(KeyStore.PrivateKeyEntry intermediate, X509Certificate certificate) throws OperatorCreationException, IOException {
         X509v2CRLBuilder builder = new JcaX509v2CRLBuilder((X509Certificate) intermediate.getCertificate(), new Date());
-        builder.addCRLEntry(certificate.getSerialNumber(), DateTime.now().minusDays(10).toDate(), 0);
-
+        builder.addCRLEntry(certificate.getSerialNumber(), Date.from(ZonedDateTime.now().minusDays(10).toInstant()), 0);
         ContentSigner revocationGen = new JcaContentSignerBuilder("SHA256withRSAEncryption").setProvider("BC").build(intermediate.getPrivateKey());
         X509CRLHolder crl = builder.build(revocationGen);
         FileOutputStream crlFile = new FileOutputStream("revoced.crl");
@@ -162,8 +161,8 @@ public class App {
                 "CN=DIFI test virksomhetssertifiat, SERIALNUMBER=987464291",
                 intermediate,
                 custom,
-                DateTime.now().minusYears(1).toDate(),
-                DateTime.now().plusYears(2).toDate()
+                Date.from(ZonedDateTime.now().minusYears(1).toInstant()),
+                Date.from(ZonedDateTime.now().plusYears(2).toInstant())
         );
     }
 
@@ -182,8 +181,8 @@ public class App {
                 "CN=DIFI test virksomhetssertifiat, SERIALNUMBER=987464291",
                 intermediate,
                 custom,
-                DateTime.now().minusYears(1).toDate(),
-                DateTime.now().plusYears(2).toDate()
+                Date.from(ZonedDateTime.now().minusYears(1).toInstant()),
+                Date.from(ZonedDateTime.now().plusYears(2).toInstant())
         );
     }
 
@@ -204,12 +203,10 @@ public class App {
                 "CN=DIFI test virksomhetssertifiat, SERIALNUMBER=987464291",
                 intermediate,
                 custom,
-                DateTime.now().minusYears(1).toDate(),
-                DateTime.now().plusYears(2).toDate()
+                Date.from(ZonedDateTime.now().minusYears(1).toInstant()),
+                Date.from(ZonedDateTime.now().plusYears(2).toInstant())
         );
     }
-
-
 
     private KeyStore.PrivateKeyEntry wrongPolicy(TestVirksomhetGenerator generator, final KeyStore.PrivateKeyEntry intermediate) throws Exception {
         CustomCertBuilder custom = (certGen, keyPair) -> {
@@ -227,8 +224,8 @@ public class App {
                 "CN=DIFI test virksomhetssertifiat, SERIALNUMBER=987464291",
                 intermediate,
                 custom,
-                DateTime.now().minusYears(1).toDate(),
-                DateTime.now().plusYears(2).toDate()
+                Date.from(ZonedDateTime.now().minusYears(1).toInstant()),
+                Date.from(ZonedDateTime.now().plusYears(2).toInstant())
         );
     }
 
@@ -246,8 +243,8 @@ public class App {
         return generator.generateSelfSignedGenerisk(
                 "CN=DIFI test virksomhetssertifiat, SERIALNUMBER=987464291",
                 custom,
-                DateTime.now().minusYears(1).toDate(),
-                DateTime.now().plusYears(2).toDate()
+                Date.from(ZonedDateTime.now().minusYears(1).toInstant()),
+                Date.from(ZonedDateTime.now().plusYears(2).toInstant())
         );
     }
 
