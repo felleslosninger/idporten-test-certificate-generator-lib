@@ -12,7 +12,6 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
-import org.joda.time.DateTime;
 
 import javax.security.auth.x500.X500Principal;
 import java.io.ByteArrayInputStream;
@@ -24,6 +23,7 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.time.ZonedDateTime;
 import java.util.Date;
 
 public class TestVirksomhetGenerator {
@@ -32,8 +32,9 @@ public class TestVirksomhetGenerator {
     static { Security.addProvider(new BouncyCastleProvider());  }
 
     private final String rsaEncryption = "SHA256withRSAEncryption";
-    Date from = new DateTime().minusMonths(1).toDate();
-    Date to = new DateTime().plusYears(2).toDate();
+
+    Date from = Date.from(ZonedDateTime.now().minusMonths(1).toInstant());
+    Date to = Date.from(ZonedDateTime.now().plusYears(2).toInstant());
     String certificatePolicies = "2.16.578.1.1.1.1.100";
 
     String rootSubject = "CN=Direktoratet for forvaltning og ikt DIFI TEST ROOT, OU=Norge, O=DIFI test - 991825827";
