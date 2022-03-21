@@ -1,6 +1,4 @@
 # Virksomhetssertifikat-generator for testing 
-[![Build Status](https://travis-ci.org/difi/kontaktregister-test-sertifikat-generator.svg?branch=master)](https://travis-ci.org/difi/kontaktregister-test-sertifikat-generator) 
-
 
 Denne appen genererer virksomhetssertifkater i en egen jks. Disse sertifikatene inneholder en struktur som er delvis
 lik den som kreves gjennom virksomhetssertifkater i det offentlige. Det vil si at alle sertifikater blir generert med
