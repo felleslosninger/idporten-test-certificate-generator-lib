@@ -2,12 +2,15 @@ package no.digdir.eid.certgenerator;
 
 import org.bouncycastle.asn1.ASN1ObjectIdentifier;
 import org.bouncycastle.asn1.ASN1Sequence;
+import org.bouncycastle.asn1.DERSequence;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.*;
 import org.bouncycastle.cert.X509CertificateHolder;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509ExtensionUtils;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
+import org.bouncycastle.crypto.AsymmetricCipherKeyPair;
+import org.bouncycastle.crypto.generators.ECKeyPairGenerator;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.OperatorCreationException;
@@ -23,6 +26,7 @@ import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.security.spec.ECGenParameterSpec;
 import java.time.ZonedDateTime;
 import java.util.Date;
 
@@ -32,12 +36,13 @@ public class TestVirksomhetGenerator {
     static { Security.addProvider(new BouncyCastleProvider());  }
 
     private final String rsaEncryption = "SHA256withRSAEncryption";
+    private final String ecdsaEncryption = "SHA256withECDSA";
 
     Date from = Date.from(ZonedDateTime.now().minusMonths(1).toInstant());
     Date to = Date.from(ZonedDateTime.now().plusYears(2).toInstant());
     String certificatePolicies = "2.16.578.1.1.1.1.100";
 
-    String rootSubject = "CN=Direktoratet for forvaltning og ikt DIFI TEST ROOT, OU=Norge, O=DIFI test - 991825827";
+    String rootSubject = "CN=Digdir, OU=Norge, O=DIFI test - 991825827";
     String mellomligendeSubject = "CN=DIFI test virksomhetssertifiat intermediate, SERIALNUMBER=991825827, O=Difi test";
     String anyPolicy = "2.5.29.32.0";
 
@@ -63,9 +68,10 @@ public class TestVirksomhetGenerator {
     public KeyStore.PrivateKeyEntry generateRot() throws Exception {
 
         SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
-        KeyPairGenerator kpGen = KeyPairGenerator.getInstance("RSA");
-        kpGen.initialize(4096, random);
-        KeyPair keyPair = kpGen.generateKeyPair();
+        KeyPairGenerator g = KeyPairGenerator.getInstance("EC", "BC");
+        ECGenParameterSpec spec = new ECGenParameterSpec("secp256r1");
+        g.initialize(spec);
+        KeyPair keyPair = g.generateKeyPair();
         PublicKey RSAPubKey = keyPair.getPublic();
         PrivateKey RSAPrivateKey = keyPair.getPrivate();
 
@@ -87,7 +93,7 @@ public class TestVirksomhetGenerator {
 
 
         //Content Signer
-        ContentSigner sigGen = new JcaContentSignerBuilder("SHA1WithRSAEncryption").setProvider("BC").build(RSAPrivateKey);
+        ContentSigner sigGen = new JcaContentSignerBuilder("SHA256withECDSA").setProvider("BC").build(RSAPrivateKey);
         X509CertificateHolder build = v3CertGen.build(sigGen);
 
         InputStream byteInStream = new ByteArrayInputStream(build.getEncoded());
@@ -140,8 +146,8 @@ public class TestVirksomhetGenerator {
 
     public KeyPair getNewKeyPair() throws NoSuchAlgorithmException {
         SecureRandom random = SecureRandom.getInstance("SHA1PRNG");
-        KeyPairGenerator kpGen = KeyPairGenerator.getInstance("RSA");
-        kpGen.initialize(2048, random);
+        KeyPairGenerator kpGen = KeyPairGenerator.getInstance("EC");
+        kpGen.initialize(256, random);
         return kpGen.generateKeyPair();
     }
 
@@ -152,6 +158,11 @@ public class TestVirksomhetGenerator {
     public KeyStore.PrivateKeyEntry generateVirksomhet(String orgnr, KeyStore.PrivateKeyEntry intermediate, BigInteger serialnumber, String...crlPath) throws Exception {
         KeyPair keyPair = getNewKeyPair();
         X509v3CertificateBuilder builder = builder(orgnr, keyPair.getPublic(), intermediate.getCertificate(), serialnumber);
+
+
+        GeneralNames subjectAltNames = GeneralNames.getInstance(new DERSequence(new GeneralName(GeneralName.dNSName, "demo-vc-verifier.idporten.dev")));
+        builder.addExtension(Extension.subjectAlternativeName, true, subjectAltNames);
+
         addVirksomhetExtensions(builder, (X509Certificate)intermediate.getCertificate(), keyPair.getPublic(), crlPath);
         ContentSigner sigGen = contentSigner(intermediate.getPrivateKey());
         X509CertificateHolder cert = builder.build(sigGen);
@@ -179,7 +190,7 @@ public class TestVirksomhetGenerator {
     }
 
     public ContentSigner contentSigner(PrivateKey privateKey) throws OperatorCreationException {
-        return new JcaContentSignerBuilder(rsaEncryption).setProvider("BC").build(privateKey);
+        return new JcaContentSignerBuilder(ecdsaEncryption).setProvider("BC").build(privateKey);
     }
 
     public KeyStore.PrivateKeyEntry generateGenerisk(String subjectText, KeyStore.PrivateKeyEntry intermediate, CustomCertBuilder custom, Date fromDate, Date toDate) throws Exception {
@@ -247,6 +258,6 @@ public class TestVirksomhetGenerator {
     }
 
     private String createVirksomhetSubject(String orgnr) {
-        return "CN=DIFI test virksomhetssertifiat, SERIALNUMBER=" + orgnr;
+        return "CN=Aldersverifiser";
     }
 }
