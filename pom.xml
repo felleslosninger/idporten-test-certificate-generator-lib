@@ -11,14 +11,14 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <bouncycastle.version>1.70</bouncycastle.version>
+        <bouncycastle.version>1.79</bouncycastle.version>
         <junit-jupiter-version>5.11.4</junit-jupiter-version>
     </properties>
 
     <dependencies>
         <dependency>
             <groupId>org.bouncycastle</groupId>
-            <artifactId>bcpkix-jdk15on</artifactId>
+            <artifactId>bcpkix-jdk18on</artifactId>
             <version>${bouncycastle.version}</version>
         </dependency>
         <dependency>
