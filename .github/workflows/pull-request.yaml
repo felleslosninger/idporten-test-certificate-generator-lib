@@ -1,0 +1,12 @@
+name: Pull request
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  pull-request-checks:
+    uses: felleslosninger/github-workflows/.github/workflows/ci-maven-build-lib.yml@main
+    with:
+      java-version: 1.8
+    secrets: inherit
