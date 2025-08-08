@@ -6,8 +6,6 @@ updates:
       interval: "daily"
   - package-ecosystem: "maven"
     directory: "/" # Location of package manifests
-    registries:
-      - maven-github
     schedule:
       interval: "daily"
       
