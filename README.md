@@ -1,5 +1,5 @@
 # Virksomhetssertifikat-generator for testing 
-![Build Status](https://github.com/felleslosninger/eid-certificate-generator/actions/workflows/maventests.yml/badge.svg)
+![Build Status](https://github.com/felleslosninger/idporten-test-certificate-generator-lib/actions/workflows/call-maventests.yml/badge.svg)
 
 Denne appen genererer virksomhetssertifkater i en egen jks. Disse sertifikatene inneholder en struktur som er delvis
 lik den som kreves gjennom virksomhetssertifkater i det offentlige. Det vil si at alle sertifikater blir generert med
