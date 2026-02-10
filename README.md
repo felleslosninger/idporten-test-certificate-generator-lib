@@ -10,7 +10,7 @@ NB: Disse virksomhetssertifkatene kan bare brukes i intern testing. For et reelt
 
 ## Forutsetninger
 
-- Java 1.8
+- Java 17
 - Maven 3.3
 - Endre organisasjonsnummer til din virksomhetsorgnr i TestVirksomhetGenerator.java
 - TestVirksomhetGenerator.CRL_PATH må endres til annen url. Denne er bare tilgjengelig for internt hos Difi. 
